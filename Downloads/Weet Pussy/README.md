@@ -133,6 +133,12 @@ npm run dev
 
 The app will be available at `http://localhost:5173`
 
+## 🌐 Live Demo
+
+- **Backend API**: https://sweet-karma-shop.onrender.com
+- **API Documentation**: https://sweet-karma-shop.onrender.com/docs
+- **Frontend**: Connect to the deployed backend by updating `VITE_API_BASE_URL` in `.env`
+
 ## 🔧 Environment Configuration
 
 ### Backend Environment Variables
@@ -192,6 +198,46 @@ VITE_ENABLE_ANALYTICS=false
 - ✅ **Enable IP whitelisting** for admin endpoints in production
 - ✅ **Use PostgreSQL** for production databases
 - ✅ **Set DEBUG=false** in production
+
+## 🚀 Deployment
+
+### Backend Deployment (Render)
+
+The backend is deployed on Render at: https://sweet-karma-shop.onrender.com
+
+### Frontend Deployment
+
+1. **Update environment for production:**
+   ```bash
+   # Use the production environment file
+   cp frontend/.env.production frontend/.env
+   ```
+
+2. **Deploy to Vercel/Netlify:**
+   ```bash
+   cd frontend
+   npm run build
+   # Deploy the dist/ folder
+   ```
+
+3. **Environment variables for deployment:**
+   ```bash
+   VITE_API_BASE_URL=https://sweet-karma-shop.onrender.com/api
+   VITE_ENVIRONMENT=production
+   ```
+
+### Local Development with Remote Backend
+
+To develop locally but use the deployed backend:
+
+```bash
+# Update your .env file
+VITE_API_BASE_URL=https://sweet-karma-shop.onrender.com/api
+
+# Or create .env.local
+cp frontend/.env.local.example frontend/.env.local
+# Then update the API URL in .env.local
+```
 
 ### 3. Default Accounts
 
