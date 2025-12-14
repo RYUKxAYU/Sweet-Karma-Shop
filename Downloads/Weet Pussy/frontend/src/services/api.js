@@ -1,13 +1,15 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Environment-based configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 15000;
 
 const api = axios.create({
 	baseURL: API_BASE_URL,
 	headers: {
 		'Content-Type': 'application/json',
 	},
-	timeout: 15000, // 15 second timeout
+	timeout: API_TIMEOUT,
 });
 
 // Helper to get token from localStorage

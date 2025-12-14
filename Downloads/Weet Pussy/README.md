@@ -78,7 +78,22 @@ A full-stack Sweet Shop Management System with **concurrency-safe purchases**, b
 - Node.js 18+
 - npm or yarn
 
-### 1. Backend Setup
+### 1. Environment Setup
+
+```bash
+# Run the automated setup script
+python setup_env.py
+
+# Or manually copy environment files
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+**Important**: Update the environment files with your specific values, especially:
+- `JWT_SECRET_KEY` in backend/.env
+- `DATABASE_URL` for production deployments
+
+### 2. Backend Setup
 
 ```bash
 cd backend
@@ -90,11 +105,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Create admin user (optional)
-python create_admin_user.py
+# Run database migration
+python migrate_db.py
 
-# Create sample data (optional)
-python create_sample_data.py
+# Create admin user (optional)
+python create_test_admin.py
 
 # Run the server
 uvicorn app.main:app --reload
@@ -104,7 +119,7 @@ The API will be available at `http://localhost:8000`
 - 📚 Swagger docs: `http://localhost:8000/docs`
 - 📖 ReDoc: `http://localhost:8000/redoc`
 
-### 2. Frontend Setup
+### 3. Frontend Setup
 
 ```bash
 cd frontend
@@ -117,6 +132,66 @@ npm run dev
 ```
 
 The app will be available at `http://localhost:5173`
+
+## 🔧 Environment Configuration
+
+### Backend Environment Variables
+
+The backend uses environment variables for configuration. Key variables include:
+
+```bash
+# Security (REQUIRED)
+JWT_SECRET_KEY=your-super-secure-secret-key-change-in-production
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Database
+DATABASE_URL=sqlite+aiosqlite:///./sweetshop.db
+# For production: postgresql+asyncpg://user:password@localhost/sweetshop
+
+# Application
+APP_NAME=Sweet Shop API
+DEBUG=true
+ENVIRONMENT=development
+
+# CORS & Security
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
+ADMIN_IP_WHITELIST=127.0.0.1,::1
+ENABLE_IP_WHITELIST=false
+
+# File Upload
+MAX_FILE_SIZE=5242880
+ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif,image/webp
+UPLOAD_DIR=uploads
+```
+
+### Frontend Environment Variables
+
+The frontend uses Vite environment variables (prefixed with `VITE_`):
+
+```bash
+# API Configuration
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_TIMEOUT=15000
+
+# App Configuration
+VITE_APP_NAME=Sweet Shop
+VITE_ENVIRONMENT=development
+
+# Feature Flags
+VITE_ENABLE_DEBUG=true
+VITE_ENABLE_ANALYTICS=false
+```
+
+### Security Best Practices
+
+- ✅ **Never commit `.env` files** to version control
+- ✅ **Use `.env.example`** files as templates
+- ✅ **Generate strong JWT secrets** (64+ characters)
+- ✅ **Use HTTPS in production**
+- ✅ **Enable IP whitelisting** for admin endpoints in production
+- ✅ **Use PostgreSQL** for production databases
+- ✅ **Set DEBUG=false** in production
 
 ### 3. Default Accounts
 
