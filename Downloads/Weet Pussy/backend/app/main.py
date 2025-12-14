@@ -1,0 +1,70 @@
+import os
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from app.config import get_settings
+from app.database import create_tables
+from app.routers import auth_router, sweets_router
+from app.routers.upload import router as upload_router
+
+settings = get_settings()
+
+# Upload directory path
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle application startup and shutdown."""
+    # Startup: Create tables and upload directory
+    await create_tables()
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    yield
+    # Shutdown: cleanup if needed
+
+
+# Create FastAPI application
+app = FastAPI(
+    title=settings.APP_NAME,
+    description="A sweet shop management system with concurrency-safe purchases",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount static files for uploaded images
+# This must be done after app creation but before routes
+uploads_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads")
+os.makedirs(uploads_path, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
+
+# Include routers
+app.include_router(auth_router, prefix="/api")
+app.include_router(sweets_router, prefix="/api")
+app.include_router(upload_router)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {
+        "message": "Welcome to the Sweet Shop API",
+        "docs": "/docs",
+        "version": "1.0.0"
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
