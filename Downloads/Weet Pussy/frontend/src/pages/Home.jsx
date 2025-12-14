@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../stores/useStore';
 import { sweetsApi } from '../services/api';
 import { SweetCard } from '../components/SweetCard';
 import { ImageUpload } from '../components/ImageUpload';
+import { SearchFilter } from '../components/SearchFilter';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import './Home.css';
 
-export function Home() {
+export function Home({ onToast }) {
 	const { user, sweets, setSweets, addSweet, isLoading, setLoading, error, setError } = useStore();
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [formData, setFormData] = useState({
@@ -17,6 +19,12 @@ export function Home() {
 		image_url: '',
 	});
 	const [formMessage, setFormMessage] = useState(null);
+	const [searchTerm, setSearchTerm] = useState('');
+	const [filters, setFilters] = useState({
+		category: 'all',
+		sortBy: 'name',
+		sortOrder: 'asc'
+	});
 
 	useEffect(() => {
 		const fetchSweets = async () => {
@@ -36,6 +44,37 @@ export function Home() {
 
 		fetchSweets();
 	}, [setSweets, setLoading, setError]);
+
+	// Filter and sort sweets
+	const filteredSweets = useMemo(() => {
+		let filtered = sweets.filter(sweet => 
+			sweet.name.toLowerCase().includes(searchTerm.toLowerCase())
+		);
+
+		if (filters.category !== 'all') {
+			filtered = filtered.filter(sweet => sweet.category === filters.category);
+		}
+
+		filtered.sort((a, b) => {
+			let aValue = a[filters.sortBy];
+			let bValue = b[filters.sortBy];
+
+			if (filters.sortBy === 'name') {
+				aValue = aValue.toLowerCase();
+				bValue = bValue.toLowerCase();
+			}
+
+			if (filters.sortOrder === 'asc') {
+				return aValue > bValue ? 1 : -1;
+			} else {
+				return aValue < bValue ? 1 : -1;
+			}
+		});
+
+		return filtered;
+	}, [sweets, searchTerm, filters]);
+
+	const categories = [...new Set(sweets.map(sweet => sweet.category))];
 
 	const handleAddSweet = async (e) => {
 		e.preventDefault();
@@ -57,8 +96,10 @@ export function Home() {
 				image_url: formData.image_url || null,
 			});
 			addSweet(sweet);
+			// Reset form data completely
 			setFormData({ name: '', category: 'Chocolate', price: '', quantity: '', image_url: '' });
 			setFormMessage({ type: 'success', text: 'Sweet added successfully!' });
+			onToast('Sweet added successfully!', 'success');
 			setTimeout(() => {
 				setShowAddForm(false);
 				setFormMessage(null);
@@ -72,7 +113,9 @@ export function Home() {
 					text: status === 403 ? 'Admin privileges required.' : 'Session expired. Please log in again.'
 				});
 			} else {
-				setFormMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to add sweet' });
+				const errorMsg = err.response?.data?.detail || 'Failed to add sweet';
+				setFormMessage({ type: 'error', text: errorMsg });
+				onToast(errorMsg, 'error');
 			}
 		}
 	};
@@ -134,6 +177,15 @@ export function Home() {
 					)}
 				</div>
 
+				{/* Search and Filter */}
+				{sweets.length > 0 && (
+					<SearchFilter
+						onSearch={setSearchTerm}
+						onFilter={setFilters}
+						categories={categories}
+					/>
+				)}
+
 				{/* Quick Add Form for Admins */}
 				{showAddForm && user?.isAdmin && (
 					<div className="quick-add-form">
@@ -183,6 +235,7 @@ export function Home() {
 							<div className="form-section">
 								<label className="form-label">Sweet Image</label>
 								<ImageUpload
+									key={`${formData.name}-${formData.category}`}
 									onImageUploaded={(url) => setFormData({ ...formData, image_url: url })}
 									currentImageUrl={formData.image_url}
 								/>
@@ -192,17 +245,20 @@ export function Home() {
 					</div>
 				)}
 
-				{isLoading && (
-					<div className="loading">
-						<span className="loading-spinner">⟳</span>
-						<p>Loading delicious sweets...</p>
-					</div>
-				)}
+				{isLoading && <LoadingSkeleton type="card" count={6} />}
 
 				{error && (
 					<div className="error-message">
 						<p>{error}</p>
 						<button onClick={() => window.location.reload()}>Try Again</button>
+					</div>
+				)}
+
+				{!isLoading && !error && filteredSweets.length === 0 && sweets.length > 0 && (
+					<div className="empty-state">
+						<span className="empty-icon">🔍</span>
+						<p>No sweets match your search criteria</p>
+						<p className="empty-hint">Try adjusting your filters or search term</p>
 					</div>
 				)}
 
@@ -222,8 +278,8 @@ export function Home() {
 				)}
 
 				<div className="sweets-grid">
-					{sweets.map((sweet) => (
-						<SweetCard key={sweet.id} sweet={sweet} />
+					{filteredSweets.map((sweet) => (
+						<SweetCard key={sweet.id} sweet={sweet} onToast={onToast} />
 					))}
 				</div>
 			</section>

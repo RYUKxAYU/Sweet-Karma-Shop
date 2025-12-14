@@ -39,3 +39,32 @@ class TokenPayload(BaseModel):
     sub: str  # user email
     is_admin: bool = False
     exp: Optional[int] = None
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema for updating user profile."""
+    email: Optional[EmailStr] = None
+    firstName: Optional[str] = Field(None, max_length=100)
+    lastName: Optional[str] = Field(None, max_length=100)
+    phone: Optional[str] = Field(None, max_length=20)
+    address: Optional[str] = Field(None, max_length=500)
+
+
+class UserProfileResponse(BaseModel):
+    """Schema for user profile response."""
+    id: int
+    email: str
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    is_admin: bool
+    
+    class Config:
+        from_attributes = True
+
+
+class PasswordChange(BaseModel):
+    """Schema for password change."""
+    current_password: str
+    new_password: str = Field(..., min_length=8, description="Password must be at least 8 characters")

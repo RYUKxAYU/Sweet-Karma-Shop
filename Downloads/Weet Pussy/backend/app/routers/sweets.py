@@ -135,7 +135,7 @@ async def purchase_sweet(
     sweet_service = SweetService(db)
     
     try:
-        return await sweet_service.purchase_sweet(sweet_id, purchase_data.quantity)
+        return await sweet_service.purchase_sweet(sweet_id, purchase_data.quantity, current_user.id)
     except SweetNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

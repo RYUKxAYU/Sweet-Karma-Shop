@@ -4,15 +4,20 @@ import shutil
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
-from app.security.dependencies import get_admin_user
+from app.security.dependencies import get_admin_user, get_current_user
 from app.models.user import User
 
 router = APIRouter(prefix="/api/upload", tags=["Upload"])
 
-# Configure upload directory
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
+# Configure upload directory - match the path used in main.py
+# Get the backend directory (parent of app directory) and add uploads
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_DIR = os.path.join(backend_dir, "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+# Debug: Print upload directory path on startup
+print(f"Upload router initialized - UPLOAD_DIR: {UPLOAD_DIR}")
 
 
 def get_file_extension(filename: str) -> str:
@@ -23,11 +28,11 @@ def get_file_extension(filename: str) -> str:
 @router.post("/image")
 async def upload_image(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_admin_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Upload an image file. Returns the URL to access the uploaded image.
-    Admin only.
+    Authenticated users only.
     """
     # Validate file extension
     ext = get_file_extension(file.filename)
@@ -57,7 +62,7 @@ async def upload_image(
         with open(file_path, "wb") as buffer:
             buffer.write(content)
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to save file")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
     
     # Return the URL to access the image
     image_url = f"/uploads/{unique_filename}"

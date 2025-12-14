@@ -4,7 +4,7 @@ import { useStore } from '../stores/useStore';
 import { authApi } from '../services/api';
 import './Auth.css';
 
-export function Login() {
+export function Login({ onToast }) {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState('');
@@ -40,6 +40,7 @@ export function Login() {
 
 			console.log('User data:', userData);
 			login(userData, response.access_token);
+			onToast(`Welcome back, ${userData.email}!`, 'success');
 			navigate('/');
 		} catch (err) {
 			console.error('Login error:', err);

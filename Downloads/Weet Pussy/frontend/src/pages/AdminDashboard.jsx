@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../stores/useStore';
 import { sweetsApi } from '../services/api';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import './AdminDashboard.css';
 
-export function AdminDashboard() {
-	const { sweets, setSweets, addSweet, updateSweet, removeSweet } = useStore();
+export function AdminDashboard({ onToast }) {
+	const { user, sweets, setSweets, addSweet, updateSweet, removeSweet } = useStore();
 	const [isLoading, setIsLoading] = useState(false);
+	const [isTableLoading, setIsTableLoading] = useState(true);
 	const [message, setMessage] = useState(null);
 
 	// Form state
@@ -20,14 +22,22 @@ export function AdminDashboard() {
 
 	useEffect(() => {
 		fetchSweets();
-	}, []);
+		
+		// Debug: Check user authentication
+		console.log('Admin Dashboard - User:', user);
+		console.log('Admin Dashboard - Token:', localStorage.getItem('token'));
+	}, [user]);
 
 	const fetchSweets = async () => {
+		setIsTableLoading(true);
 		try {
 			const data = await sweetsApi.getAll();
 			setSweets(data);
 		} catch (err) {
 			console.error('Error fetching sweets:', err);
+			onToast('Failed to load sweets', 'error');
+		} finally {
+			setIsTableLoading(false);
 		}
 	};
 
@@ -42,6 +52,15 @@ export function AdminDashboard() {
 		setIsLoading(true);
 		setMessage(null);
 
+		// Check if we have a token
+		const token = localStorage.getItem('token');
+		if (!token) {
+			setMessage({ type: 'error', text: 'Session expired. Please log in again.' });
+			onToast('Session expired. Please log in again.', 'error');
+			setIsLoading(false);
+			return;
+		}
+
 		const sweetData = {
 			name: formData.name,
 			category: formData.category,
@@ -49,22 +68,35 @@ export function AdminDashboard() {
 			quantity: parseInt(formData.quantity),
 		};
 
+		console.log('Submitting sweet data:', sweetData);
+		console.log('Token exists:', !!token);
+
 		try {
 			if (isEditing && editId) {
 				const updated = await sweetsApi.update(editId, sweetData);
 				updateSweet(editId, updated);
 				setMessage({ type: 'success', text: 'Sweet updated successfully!' });
+				onToast('Sweet updated successfully!', 'success');
 			} else {
 				const created = await sweetsApi.create(sweetData);
 				addSweet(created);
 				setMessage({ type: 'success', text: 'Sweet created successfully!' });
+				onToast('Sweet created successfully!', 'success');
 			}
 			resetForm();
 		} catch (err) {
-			setMessage({
-				type: 'error',
-				text: err.response?.data?.detail || 'Operation failed'
-			});
+			console.error('Submit error:', err);
+			const status = err.response?.status;
+			if (status === 401 || status === 403) {
+				setMessage({
+					type: 'error',
+					text: status === 403 ? 'Admin privileges required.' : 'Session expired. Please log in again.'
+				});
+			} else {
+				const errorMsg = err.response?.data?.detail || 'Operation failed';
+				setMessage({ type: 'error', text: errorMsg });
+			}
+			onToast(err.response?.data?.detail || 'Operation failed', 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -88,16 +120,46 @@ export function AdminDashboard() {
 			await sweetsApi.delete(id);
 			removeSweet(id);
 			setMessage({ type: 'success', text: 'Sweet deleted successfully!' });
+			onToast('Sweet deleted successfully!', 'success');
 		} catch (err) {
-			setMessage({ type: 'error', text: 'Failed to delete sweet' });
+			const errorMsg = 'Failed to delete sweet';
+			setMessage({ type: 'error', text: errorMsg });
+			onToast(errorMsg, 'error');
 		}
 	};
+
+	// Debug: Show authentication status
+	if (!user) {
+		return (
+			<div className="admin-dashboard">
+				<div className="admin-header">
+					<h1>⚠️ Authentication Required</h1>
+					<p>Please log in to access the admin dashboard</p>
+				</div>
+			</div>
+		);
+	}
+
+	if (!user.isAdmin) {
+		return (
+			<div className="admin-dashboard">
+				<div className="admin-header">
+					<h1>🚫 Access Denied</h1>
+					<p>Admin privileges required</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="admin-dashboard">
 			<div className="admin-header">
 				<h1>🛠️ Admin Dashboard</h1>
 				<p>Manage your sweet shop inventory</p>
+				{/* Debug info */}
+				<div style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>
+					Logged in as: {user.email} | Admin: {user.isAdmin ? 'Yes' : 'No'} | Token: {localStorage.getItem('token') ? 'Present' : 'Missing'}
+				</div>
 			</div>
 
 			<div className="admin-content">
@@ -180,56 +242,60 @@ export function AdminDashboard() {
 					<h2>Inventory</h2>
 
 					<div className="table-container">
-						<table className="admin-table">
-							<thead>
-								<tr>
-									<th>Name</th>
-									<th>Category</th>
-									<th>Price</th>
-									<th>Quantity</th>
-									<th>Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{sweets.map((sweet) => (
-									<tr key={sweet.id}>
-										<td>{sweet.name}</td>
-										<td>
-											<span className="category-badge">{sweet.category}</span>
-										</td>
-										<td>₹{sweet.price.toFixed(2)}</td>
-										<td>
-											<span className={sweet.quantity === 0 ? 'out-of-stock' : ''}>
-												{sweet.quantity}
-											</span>
-										</td>
-										<td>
-											<div className="table-actions">
-												<button
-													className="btn-edit"
-													onClick={() => handleEdit(sweet)}
-												>
-													✏️
-												</button>
-												<button
-													className="btn-delete"
-													onClick={() => handleDelete(sweet.id)}
-												>
-													🗑️
-												</button>
-											</div>
-										</td>
-									</tr>
-								))}
-								{sweets.length === 0 && (
+						{isTableLoading ? (
+							<LoadingSkeleton type="table" count={5} />
+						) : (
+							<table className="admin-table">
+								<thead>
 									<tr>
-										<td colSpan="5" className="empty-row">
-											No sweets in inventory
-										</td>
+										<th>Name</th>
+										<th>Category</th>
+										<th>Price</th>
+										<th>Quantity</th>
+										<th>Actions</th>
 									</tr>
-								)}
-							</tbody>
-						</table>
+								</thead>
+								<tbody>
+									{sweets.map((sweet) => (
+										<tr key={sweet.id}>
+											<td>{sweet.name}</td>
+											<td>
+												<span className="category-badge">{sweet.category}</span>
+											</td>
+											<td>₹{sweet.price.toFixed(2)}</td>
+											<td>
+												<span className={sweet.quantity === 0 ? 'out-of-stock' : ''}>
+													{sweet.quantity}
+												</span>
+											</td>
+											<td>
+												<div className="table-actions">
+													<button
+														className="btn-edit"
+														onClick={() => handleEdit(sweet)}
+													>
+														✏️
+													</button>
+													<button
+														className="btn-delete"
+														onClick={() => handleDelete(sweet.id)}
+													>
+														🗑️
+													</button>
+												</div>
+											</td>
+										</tr>
+									))}
+									{sweets.length === 0 && (
+										<tr>
+											<td colSpan="5" className="empty-row">
+												No sweets in inventory
+											</td>
+										</tr>
+									)}
+								</tbody>
+							</table>
+						)}
 					</div>
 				</div>
 			</div>

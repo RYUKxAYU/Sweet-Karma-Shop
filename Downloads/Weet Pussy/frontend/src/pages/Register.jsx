@@ -1,49 +1,79 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../stores/useStore';
 import { authApi } from '../services/api';
 import './Auth.css';
 
-export function Register() {
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [confirmPassword, setConfirmPassword] = useState('');
+export function Register({ onToast }) {
+	const [formData, setFormData] = useState({
+		email: '',
+		password: '',
+		confirmPassword: ''
+	});
 	const [error, setError] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 
-	const { login } = useStore();
+	const { login, user } = useStore();
 	const navigate = useNavigate();
+
+	// Redirect if already logged in
+	useEffect(() => {
+		if (user) {
+			navigate('/');
+		}
+	}, [user, navigate]);
+
+	const handleChange = (e) => {
+		setFormData({
+			...formData,
+			[e.target.name]: e.target.value
+		});
+	};
+
+	const validateForm = () => {
+		if (formData.password !== formData.confirmPassword) {
+			setError('Passwords do not match');
+			return false;
+		}
+		if (formData.password.length < 6) {
+			setError('Password must be at least 6 characters long');
+			return false;
+		}
+		return true;
+	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError('');
 
-		if (password !== confirmPassword) {
-			setError('Passwords do not match');
-			return;
-		}
-
-		if (password.length < 8) {
-			setError('Password must be at least 8 characters');
+		if (!validateForm()) {
 			return;
 		}
 
 		setIsLoading(true);
 
 		try {
-			const response = await authApi.register(email, password);
-
-			const user = {
+			const response = await authApi.register(formData.email, formData.password);
+			
+			const userData = {
 				id: response.user.id,
 				email: response.user.email,
 				isAdmin: response.user.is_admin,
 				has2fa: response.user.has_2fa,
 			};
 
-			login(user, response.access_token);
+			login(userData, response.access_token);
+			onToast(`Welcome to Sweet Shop, ${userData.email}!`, 'success');
 			navigate('/');
 		} catch (err) {
-			setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+			console.error('Registration error:', err);
+			if (err.code === 'ECONNABORTED') {
+				setError('Request timed out. Please check if the server is running.');
+			} else if (err.code === 'ERR_NETWORK') {
+				setError('Cannot connect to server. Make sure the backend is running on port 8000.');
+			} else {
+				setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+			}
 		} finally {
 			setIsLoading(false);
 		}
@@ -53,9 +83,9 @@ export function Register() {
 		<div className="auth-page">
 			<div className="auth-container">
 				<div className="auth-header">
-					<span className="auth-icon">✨</span>
-					<h1>Create Account</h1>
-					<p>Join our sweet community</p>
+					<span className="auth-icon">🍬</span>
+					<h1>Join Sweet Shop</h1>
+					<p>Create your account to start shopping</p>
 				</div>
 
 				<form onSubmit={handleSubmit} className="auth-form">
@@ -66,10 +96,12 @@ export function Register() {
 						<input
 							type="email"
 							id="email"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
+							name="email"
+							value={formData.email}
+							onChange={handleChange}
 							placeholder="Enter your email"
 							required
+							disabled={isLoading}
 						/>
 					</div>
 
@@ -78,11 +110,13 @@ export function Register() {
 						<input
 							type="password"
 							id="password"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							placeholder="At least 8 characters"
+							name="password"
+							value={formData.password}
+							onChange={handleChange}
+							placeholder="Create a password"
 							required
-							minLength={8}
+							disabled={isLoading}
+							minLength={6}
 						/>
 					</div>
 
@@ -91,15 +125,25 @@ export function Register() {
 						<input
 							type="password"
 							id="confirmPassword"
-							value={confirmPassword}
-							onChange={(e) => setConfirmPassword(e.target.value)}
+							name="confirmPassword"
+							value={formData.confirmPassword}
+							onChange={handleChange}
 							placeholder="Confirm your password"
 							required
+							disabled={isLoading}
+							minLength={6}
 						/>
 					</div>
 
 					<button type="submit" className="auth-btn" disabled={isLoading}>
-						{isLoading ? <span className="spinner">⟳</span> : 'Create Account'}
+						{isLoading ? (
+							<>
+								<span className="spinner">⟳</span>
+								<span style={{ marginLeft: '8px' }}>Creating account...</span>
+							</>
+						) : (
+							'Create Account'
+						)}
 					</button>
 				</form>
 

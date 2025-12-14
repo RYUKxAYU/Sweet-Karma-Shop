@@ -3,8 +3,8 @@ import { useStore } from '../stores/useStore';
 import { sweetsApi } from '../services/api';
 import './SweetCard.css';
 
-export function SweetCard({ sweet }) {
-	const { user, updateSweet } = useStore();
+export function SweetCard({ sweet, onToast }) {
+	const { user, updateSweet, addToCart } = useStore();
 	const [isLoading, setIsLoading] = useState(false);
 	const [message, setMessage] = useState(null);
 
@@ -32,10 +32,21 @@ export function SweetCard({ sweet }) {
 		}
 	};
 
-	const handlePurchase = async () => {
+	const handleAddToCart = () => {
 		if (!user) {
-			setMessage({ type: 'error', text: 'Please login to purchase' });
-			setTimeout(() => setMessage(null), 3000);
+			onToast('Please login to add items to cart', 'error');
+			return;
+		}
+
+		if (isOutOfStock) return;
+
+		addToCart(sweet, 1);
+		onToast(`${sweet.name} added to cart!`, 'success');
+	};
+
+	const handleBuyNow = async () => {
+		if (!user) {
+			onToast('Please login to purchase', 'error');
 			return;
 		}
 
@@ -48,9 +59,11 @@ export function SweetCard({ sweet }) {
 			const result = await sweetsApi.purchase(sweet.id, 1);
 			updateSweet(sweet.id, { quantity: result.sweet.quantity });
 			setMessage({ type: 'success', text: '✓ Purchased!' });
+			onToast('Purchase successful!', 'success');
 		} catch (err) {
 			const errorMsg = err.response?.data?.detail || 'Purchase failed';
 			setMessage({ type: 'error', text: errorMsg });
+			onToast(errorMsg, 'error');
 		} finally {
 			setIsLoading(false);
 			setTimeout(() => setMessage(null), 3000);
@@ -97,24 +110,37 @@ export function SweetCard({ sweet }) {
 					</div>
 				)}
 
-				<button
-					className={`purchase-btn ${isOutOfStock ? 'disabled' : ''}`}
-					onClick={handlePurchase}
-					disabled={isOutOfStock || isLoading || !user}
-				>
-					{isLoading ? (
-						<span className="btn-spinner">⟳</span>
-					) : isOutOfStock ? (
-						'Sold Out'
-					) : !user ? (
-						'Login to Buy'
-					) : (
-						<>
+				<div className="card-actions">
+					{user && !user.isAdmin && !isOutOfStock && (
+						<button
+							className="add-to-cart-btn"
+							onClick={handleAddToCart}
+							disabled={isOutOfStock}
+						>
 							<span className="btn-icon">🛒</span>
-							Buy Now
-						</>
+							Add to Cart
+						</button>
 					)}
-				</button>
+					
+					<button
+						className={`purchase-btn ${isOutOfStock ? 'disabled' : ''} ${user && !user.isAdmin && !isOutOfStock ? 'secondary' : ''}`}
+						onClick={handleBuyNow}
+						disabled={isOutOfStock || isLoading || !user}
+					>
+						{isLoading ? (
+							<span className="btn-spinner">⟳</span>
+						) : isOutOfStock ? (
+							'Sold Out'
+						) : !user ? (
+							'Login to Buy'
+						) : (
+							<>
+								<span className="btn-icon">⚡</span>
+								Buy Now
+							</>
+						)}
+					</button>
+				</div>
 			</div>
 		</div>
 	);

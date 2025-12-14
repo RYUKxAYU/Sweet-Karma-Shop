@@ -7,6 +7,7 @@ from app.repositories.sweet_repository import (
     SweetNotFoundError
 )
 from app.models.sweet import Sweet, SweetCategory
+from app.models.order import Order, OrderStatus
 from app.schemas.sweet import SweetCreate, SweetUpdate, SweetResponse, PurchaseResponse
 
 
@@ -57,7 +58,8 @@ class SweetService:
     async def purchase_sweet(
         self, 
         sweet_id: str, 
-        quantity: int = 1
+        quantity: int = 1,
+        user_id: Optional[int] = None
     ) -> PurchaseResponse:
         """
         Purchase a sweet atomically.
@@ -66,6 +68,22 @@ class SweetService:
         """
         try:
             sweet = await self.sweet_repo.atomic_purchase(sweet_id, quantity)
+            
+            # Create order record if user is provided
+            if user_id:
+                total = sweet.price * quantity
+                order = Order(
+                    user_id=user_id,
+                    sweet_id=sweet_id,
+                    sweet_name=sweet.name,
+                    quantity=quantity,
+                    unit_price=sweet.price,
+                    total=total,
+                    status=OrderStatus.COMPLETED
+                )
+                self.session.add(order)
+                await self.session.commit()
+            
             return PurchaseResponse(
                 success=True,
                 message=f"Successfully purchased {quantity} x {sweet.name}",

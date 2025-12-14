@@ -16,5 +16,11 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     two_factor_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
+    # Profile fields
+    firstName: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lastName: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email}, is_admin={self.is_admin})>"

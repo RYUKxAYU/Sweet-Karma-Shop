@@ -109,4 +109,34 @@ export const sweetsApi = {
 	},
 };
 
+// User API
+export const userApi = {
+	updateProfile: async (profileData) => {
+		const response = await api.put('/users/profile', profileData);
+		return response.data;
+	},
+
+	getProfile: async () => {
+		const response = await api.get('/users/profile');
+		return response.data;
+	},
+
+	getOrderHistory: async () => {
+		const response = await api.get('/users/orders');
+		return response.data;
+	},
+
+	changePassword: async (currentPassword, newPassword) => {
+		const response = await api.put('/users/password', {
+			current_password: currentPassword,
+			new_password: newPassword
+		});
+		return response.data;
+	},
+
+	deleteAccount: async () => {
+		await api.delete('/users/profile');
+	},
+};
+
 export default api;

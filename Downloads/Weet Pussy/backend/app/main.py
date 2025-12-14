@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.database import create_tables
 from app.routers import auth_router, sweets_router
 from app.routers.upload import router as upload_router
+from app.routers.users import router as users_router
 
 settings = get_settings()
 
@@ -51,6 +52,7 @@ app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
 # Include routers
 app.include_router(auth_router, prefix="/api")
 app.include_router(sweets_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
 app.include_router(upload_router)
 
 
