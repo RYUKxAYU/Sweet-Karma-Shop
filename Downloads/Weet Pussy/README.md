@@ -135,9 +135,32 @@ The app will be available at `http://localhost:5173`
 
 ## 🌐 Live Demo
 
+- **Frontend**: https://sweet-karma-shop-8xmg.vercel.app/
 - **Backend API**: https://sweet-karma-shop.onrender.com
 - **API Documentation**: https://sweet-karma-shop.onrender.com/docs
-- **Frontend**: Connect to the deployed backend by updating `VITE_API_BASE_URL` in `.env`
+- **Debug Tool**: https://sweet-karma-shop-8xmg.vercel.app/debug-connection.html
+
+### 🔧 Troubleshooting Connection Issues
+
+If you see "Cannot connect to server" error:
+
+1. **Check CORS Configuration** on your Render backend:
+   - Go to https://dashboard.render.com
+   - Find your backend service
+   - Update `ALLOWED_ORIGINS` environment variable to include:
+     ```
+     http://localhost:5173,http://localhost:5174,http://localhost:3000,https://sweet-karma-shop-8xmg.vercel.app,https://sweet-karma-shop-frontend.vercel.app
+     ```
+
+2. **Use the Debug Tool**:
+   - Visit: https://sweet-karma-shop-8xmg.vercel.app/debug-connection.html
+   - Run connection tests
+   - Copy CORS configuration
+
+3. **Run the CORS Fix Script**:
+   ```bash
+   python fix-cors-issue.py
+   ```
 
 ## 🔧 Environment Configuration
 

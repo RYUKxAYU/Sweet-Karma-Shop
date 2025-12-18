@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sweet Shop - Connection Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+        .test-section {
+            background: #16213e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #4f46e5;
+        }
+        .success { border-left-color: #10b981; }
+        .error { border-left-color: #ef4444; }
+        .warning { border-left-color: #f59e0b; }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #4338ca; }
+        pre {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.success { background: #10b981; }
+        .status.error { background: #ef4444; }
+        .status.pending { background: #f59e0b; }
+    </style>
+</head>
+<body>
+    <h1>🍬 Sweet Shop - Connection Debug Tool</h1>
+    <p>This tool helps diagnose connection issues between your frontend and backend.</p>
+    
+    <div class="test-section">
+        <h2>📊 Current Configuration</h2>
+        <p><strong>Frontend URL:</strong> <span id="frontend-url">Loading...</span></p>
+        <p><strong>Backend URL:</strong> <span id="backend-url">https://sweet-karma-shop.onrender.com</span></p>
+        <p><strong>API Base URL:</strong> <span id="api-url">https://sweet-karma-shop.onrender.com/api</span></p>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 Connection Tests</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 CORS Configuration</h2>
+        <p>Your backend needs to allow requests from:</p>
+        <pre id="cors-config">https://sweet-karma-shop-8xmg.vercel.app</pre>
+        <button onclick="copyCorsConfig()">Copy CORS Config</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Debug Information</h2>
+        <pre id="debug-info">Click "Run All Tests" to see debug information...</pre>
+    </div>
+
+    <script>
+        // Configuration
+        const BACKEND_URL = 'https://sweet-karma-shop.onrender.com';
+        const API_BASE_URL = 'https://sweet-karma-shop.onrender.com/api';
+        
+        // Update current configuration
+        document.getElementById('frontend-url').textContent = window.location.origin;
+        
+        // Test functions
+        async function testEndpoint(name, url, options = {}) {
+            const startTime = Date.now();
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    ...options
+                });
+                
+                const endTime = Date.now();
+                const data = await response.json();
+                
+                return {
+                    success: true,
+                    status: response.status,
+                    data: data,
+                    time: endTime - startTime,
+                    headers: Object.fromEntries(response.headers.entries())
+                };
+            } catch (error) {
+                const endTime = Date.now();
+                return {
+                    success: false,
+                    error: error.message,
+                    time: endTime - startTime
+                };
+            }
+        }
+
+        async function runAllTests() {
+            const resultsDiv = document.getElementById('test-results');
+            const debugDiv = document.getElementById('debug-info');
+            
+            resultsDiv.innerHTML = '<p>Running tests...</p>';
+            debugDiv.innerHTML = 'Running tests...\n';
+            
+            const tests = [
+                { name: 'Backend Health', url: `${BACKEND_URL}/health` },
+                { name: 'Backend Root', url: `${BACKEND_URL}/` },
+                { name: 'API Sweets', url: `${API_BASE_URL}/sweets` },
+                { name: 'CORS Preflight', url: `${API_BASE_URL}/sweets`, options: { method: 'OPTIONS' } }
+            ];
+            
+            let results = [];
+            let debugInfo = `Debug Information - ${new Date().toISOString()}\n`;
+            debugInfo += `Frontend: ${window.location.origin}\n`;
+            debugInfo += `Backend: ${BACKEND_URL}\n`;
+            debugInfo += `User Agent: ${navigator.userAgent}\n\n`;
+            
+            for (const test of tests) {
+                debugInfo += `Testing ${test.name}...\n`;
+                const result = await testEndpoint(test.name, test.url, test.options);
+                results.push({ ...test, ...result });
+                
+                if (result.success) {
+                    debugInfo += `✅ ${test.name}: ${result.status} (${result.time}ms)\n`;
+                } else {
+                    debugInfo += `❌ ${test.name}: ${result.error} (${result.time}ms)\n`;
+                }
+            }
+            
+            // Display results
+            let html = '<h3>Test Results:</h3>';
+            results.forEach(result => {
+                const statusClass = result.success ? 'success' : 'error';
+                html += `
+                    <div class="test-section ${statusClass}">
+                        <h4>${result.name} <span class="status ${statusClass}">${result.success ? 'PASS' : 'FAIL'}</span></h4>
+                        <p><strong>URL:</strong> ${result.url}</p>
+                        <p><strong>Time:</strong> ${result.time}ms</p>
+                        ${result.success ? 
+                            `<p><strong>Status:</strong> ${result.status}</p>
+                             <p><strong>Response:</strong> ${JSON.stringify(result.data, null, 2).substring(0, 200)}...</p>` :
+                            `<p><strong>Error:</strong> ${result.error}</p>`
+                        }
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+            debugDiv.innerHTML = debugInfo;
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('debug-info').innerHTML = 'Click "Run All Tests" to see debug information...';
+        }
+
+        function copyCorsConfig() {
+            const corsConfig = `ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:3000,${window.location.origin},https://sweet-karma-shop-8xmg.vercel.app,https://sweet-karma-shop-frontend.vercel.app,https://sweet-karma-shop-frontend.netlify.app,https://sweet-karma-shop.vercel.app,https://sweet-karma-shop.netlify.app`;
+            
+            navigator.clipboard.writeText(corsConfig).then(() => {
+                alert('CORS configuration copied to clipboard!\n\nPaste this in your Render environment variables.');
+            }).catch(() => {
+                prompt('Copy this CORS configuration:', corsConfig);
+            });
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>
