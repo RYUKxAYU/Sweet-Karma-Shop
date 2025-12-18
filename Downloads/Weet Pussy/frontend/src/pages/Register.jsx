@@ -67,13 +67,10 @@ export function Register({ onToast }) {
 			navigate('/');
 		} catch (err) {
 			console.error('Registration error:', err);
-			if (err.code === 'ECONNABORTED') {
-				setError('Request timed out. Please check if the server is running.');
-			} else if (err.code === 'ERR_NETWORK') {
-				setError('Cannot connect to server. Make sure the backend is running on port 8000.');
-			} else {
-				setError(err.response?.data?.detail || 'Registration failed. Please try again.');
-			}
+			
+			// Import error handler dynamically to avoid circular imports
+			const { getErrorMessage } = await import('../utils/errorHandler');
+			setError(getErrorMessage(err));
 		} finally {
 			setIsLoading(false);
 		}

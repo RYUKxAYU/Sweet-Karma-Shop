@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import './ImageUpload.css';
 
-const API_BASE = 'http://localhost:8000';
+// Use environment variable for API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
 
 export function ImageUpload({ onImageUploaded, currentImageUrl }) {
 	const [preview, setPreview] = useState(currentImageUrl || null);
