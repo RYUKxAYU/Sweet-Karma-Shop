@@ -70,3 +70,19 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/api")
+async def api_root():
+    """API root endpoint."""
+    return {
+        "message": "Sweet Shop API",
+        "version": "1.0.0",
+        "status": "running",
+        "endpoints": {
+            "auth": "/api/auth",
+            "sweets": "/api/sweets",
+            "users": "/api/users",
+            "upload": "/upload"
+        }
+    }
